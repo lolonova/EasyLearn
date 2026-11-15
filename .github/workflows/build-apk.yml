@@ -28,6 +28,16 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Récupérer les illustrations 3D originales depuis le dépôt source
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets/images/3d
+          base="https://raw.githubusercontent.com/lolonova/revise-plus-v3-test/revise-plus-nouvelle-app/app/src/main/assets/images/3d"
+          for asset in gabriel-explorer-3d.png nova-robot-3d.png lumi-fairy-3d.png magic-world-3d.png; do
+            curl -fL --retry 3 "$base/$asset" -o "app/src/main/assets/images/3d/$asset"
+            test -s "app/src/main/assets/images/3d/$asset"
+          done
+
       - name: Vérifier la bibliothèque d'illustrations 3D
         run: |
           set -euo pipefail
