@@ -11,249 +11,288 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.sceneview.SceneView
-import io.github.sceneview.rememberCameraManipulator
-import io.github.sceneview.rememberEngine
-import io.github.sceneview.rememberModelInstance
-import io.github.sceneview.rememberModelLoader
 
-private val Purple = Color(0xFF7357E8)
-private val Ink = Color(0xFF20264A)
-private val Lilac = Color(0xFFEDE9FF)
-private val Mint = Color(0xFFDDF8EF)
-private val Bg = Color(0xFFF7F6FC)
+private val Ink = Color(0xFF18243A)
+private val Blue = Color(0xFF315F91)
+private val BlueSoft = Color(0xFFEAF2F9)
+private val Paper = Color(0xFFF7F8FA)
+private val Muted = Color(0xFF68778A)
+private val Line = Color(0xFFE5EAF0)
 
 class MainActivity : ComponentActivity() {
- override fun onCreate(savedInstanceState: Bundle?) {
-  super.onCreate(savedInstanceState)
-  val prefs = getSharedPreferences("eduko_profile", MODE_PRIVATE)
-  setContent {
-   MaterialTheme(colorScheme = lightColorScheme(primary = Purple, background = Bg)) {
-    EdukoApp(prefs.getString("name","") ?: "", prefs.getString("level","4e") ?: "4e", prefs.getString("pet","🐉") ?: "🐉", prefs.getString("needs","") ?: "") { n,l,needs,pet ->
-     prefs.edit().putString("name",n).putString("level",l).putString("needs",needs.joinToString(",")).putString("pet",pet).apply()
-    }
-   }
-  }
- }
-}
-
-private enum class Page { PROFILE, HOME, LESSON, QUIZ, TEACHER }
-
-@Composable
-private fun EdukoApp(savedName:String, savedLevel:String, savedPet:String, savedNeeds:String, save:(String,String,List<String>,String)->Unit) {
- var name by remember { mutableStateOf(savedName) }
- var level by remember { mutableStateOf(savedLevel) }
- var pet by remember { mutableStateOf(savedPet) }
- var needs by remember { mutableStateOf(savedNeeds.split(",").filter { it.isNotBlank() }.toSet()) }
- var page by remember { mutableStateOf(if(savedName.isBlank()) Page.PROFILE else Page.HOME) }
- var request by remember { mutableStateOf("") }
- var lesson by remember { mutableStateOf("Pythagore") }
- var question by remember { mutableStateOf("") }
- var qIndex by remember { mutableIntStateOf(0) }
- var score by remember { mutableIntStateOf(0) }
- var done by remember { mutableStateOf(false) }
- var photoReady by remember { mutableStateOf(false) }
- val voice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-  val words=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-  if(!words.isNullOrBlank()){ request=words; lesson=if(words.contains("Pythagore",true)) "Pythagore" else words; page=Page.LESSON }
- }
- val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-  photoReady=bitmap!=null
-  if(bitmap!=null) request="Photo de cours ajoutée — analyse à connecter"
- }
- when(page) {
-  Page.PROFILE -> Profile(name,{name=it},level,{level=it},pet,{pet=it},needs,{needs=it}) {
-   save(name,level,needs.toList(),pet); page=Page.HOME
-  }
-  Page.HOME -> Home(name.ifBlank{"Aventurier"},pet,request,{request=it},
-   { val i=Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-    putExtra(RecognizerIntent.EXTRA_LANGUAGE,"fr-FR")
-    putExtra(RecognizerIntent.EXTRA_PROMPT,"Que souhaites-tu apprendre ?")
-   }; runCatching { voice.launch(i) } },
-   {camera.launch(null)},
-   {lesson=if(request.contains("Pythagore",true)) "Pythagore" else request.ifBlank{"Pythagore"};page=Page.LESSON},
-   {page=Page.PROFILE},{page=Page.TEACHER},photoReady)
-  Page.LESSON -> Lesson(lesson,pet,{page=Page.HOME},{qIndex=0;score=0;done=false;page=Page.QUIZ},{page=Page.TEACHER})
-  Page.QUIZ -> Quiz(qIndex,score,done,{ok->if(ok)score++;if(qIndex==4)done=true else qIndex++},{page=Page.LESSON},{qIndex=0;score=0;done=false})
-  Page.TEACHER -> Teacher(question,{question=it},pet,{page=Page.LESSON})
- }
-}
-
-@Composable private fun Profile(name:String,onName:(String)->Unit,level:String,onLevel:(String)->Unit,pet:String,onPet:(String)->Unit,needs:Set<String>,onNeeds:(Set<String>)->Unit,go:()->Unit) {
- Screen {
-  Heading("Bienvenue dans Eduko","Ton espace pour apprendre à ta façon")
-  Panel(Lilac) {
-   Text("Comment t'appelles-tu ?",fontWeight=FontWeight.Bold,color=Ink)
-   Entry(name,onName,"Ton prénom")
-   Text("Ta classe",fontWeight=FontWeight.Bold,color=Ink)
-   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){ listOf("5e","4e","3e").forEach{ FilterChip(level==it,{onLevel(it)},{Text(it)}) } }
-  }
-  Panel(Color.White) {
-   Text("Choisis ton compagnon",fontSize=19.sp,fontWeight=FontWeight.Bold,color=Ink)
-   Text("Tu pourras en changer quand tu voudras.",color=Color.Gray,fontSize=12.sp)
-   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-    listOf("🐉","🦊","🐼","🤖","🐱").forEach { p ->
-     Box(Modifier.size(52.dp).background(if(pet==p)Lilac else Bg,CircleShape).clickable{onPet(p)},contentAlignment=Alignment.Center){Text(p,fontSize=29.sp)}
-    }
-   }
-  }
-  Panel(Mint) {
-   Text("Mon profil d'apprentissage",fontWeight=FontWeight.Bold,color=Ink,fontSize=18.sp)
-   Text("Facultatif : sélectionne les adaptations qui peuvent t'aider. Eduko ne pose aucun diagnostic.",fontSize=12.sp,color=Color.DarkGray)
-   listOf("Dyslexie","Dysorthographie","Dyscalculie","Dyspraxie","Dysphasie","TDAH","TSA","Concentration","Mémorisation","Autre besoin").forEach { item ->
-    Row(verticalAlignment=Alignment.CenterVertically) {
-     Checkbox(item in needs,{checked->onNeeds(if(checked)needs+item else needs-item)})
-     Text(item,color=Ink)
-    }
-   }
-  }
-  Button(go,Modifier.fillMaxWidth().height(54.dp),enabled=name.isNotBlank(),shape=RoundedCornerShape(17.dp)){Text("C'est parti ! ✨",fontSize=17.sp,fontWeight=FontWeight.Bold)}
- }
-}
-
-@Composable private fun Home(name:String,pet:String,request:String,onRequest:(String)->Unit,voice:()->Unit,photo:()->Unit,go:()->Unit,profile:()->Unit,teacher:()->Unit,photoReady:Boolean) {
- Screen {
-  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-   Column { Text("EDUKO",color=Purple,fontWeight=FontWeight.Black,letterSpacing=3.sp);Text("Salut "+name+" !",color=Ink,fontSize=27.sp,fontWeight=FontWeight.ExtraBold) }
-   Text("⚙️",Modifier.clickable{profile()},fontSize=24.sp)
-  }
-  Panel(Brush.linearGradient(listOf(Color(0xFF7760E8),Color(0xFF9B82F4)))) {
-   Row(verticalAlignment=Alignment.CenterVertically) {
-    EdukoRobot3D(Modifier.width(150.dp).height(205.dp))
-    Column(Modifier.weight(1f)) {
-     Text("TON COMPAGNON D'ÉTUDE",color=Color.White.copy(alpha=.8f),fontSize=11.sp)
-     Text("On apprend ensemble ?",color=Color.White,fontSize=20.sp,fontWeight=FontWeight.Bold)
-     Text("Je suis là pour t'aider, à ton rythme.",color=Color.White,fontSize=12.sp)
-    }
-   }
-   Text("Que veux-tu apprendre aujourd'hui ?",color=Color.White,fontWeight=FontWeight.Bold)
-   Entry(request,onRequest,"Ex. : Je veux réviser Pythagore…")
-   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-    Button(voice,Modifier.weight(1f),colors=ButtonDefaults.buttonColors(containerColor=Color.White,contentColor=Purple)){Icon(Icons.Default.Mic,null);Text("Parler")}
-    Button(go,Modifier.weight(1f),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFFFFD88A),contentColor=Ink)){Text("Réviser")}
-   }
-  }
-  Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-   Tile("📸","Photographier mon cours",Modifier.weight(1f),photo)
-   Tile("🎓","Parler au professeur",Modifier.weight(1f),teacher)
-  }
-  if(photoReady) Panel(Mint){Text("Photo prise ! L'analyse intelligente sera ajoutée dans une prochaine version.",color=Ink)}
-  Text("Mes matières",color=Ink,fontSize=20.sp,fontWeight=FontWeight.Bold)
-  listOf("📐  Mathématiques","📚  Français","🇬🇧  Anglais","🇮🇹  Italien","🌍  Histoire-Géographie","🧪  Physique-Chimie","🌱  SVT").chunked(2).forEach { row ->
-   Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
-    row.forEach { subject -> Panel(Color.White,Modifier.weight(1f)){Text(subject,color=Ink,fontWeight=FontWeight.SemiBold,modifier=Modifier.clickable{onRequest("Réviser "+subject.substringAfter("  "));go()})} }
-    if(row.size==1) Spacer(Modifier.weight(1f))
-   }
-  }
- }
-}
-
-@Composable
-private fun EdukoRobot3D(modifier: Modifier = Modifier) {
-    val engine = rememberEngine()
-    val modelLoader = rememberModelLoader(engine)
-    SceneView(
-        modifier = modifier,
-        engine = engine,
-        modelLoader = modelLoader,
-        cameraManipulator = rememberCameraManipulator()
-    ) {
-        rememberModelInstance(modelLoader, "models/eduko_robot_v1.glb")?.let { instance ->
-            ModelNode(modelInstance = instance, scaleToUnits = 2.15f, autoAnimate = true)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val prefs = getSharedPreferences("eduko_profile", MODE_PRIVATE)
+        setContent {
+            MaterialTheme(colorScheme = lightColorScheme(
+                primary = Blue, onPrimary = Color.White, background = Paper,
+                surface = Color.White, onSurface = Ink
+            )) {
+                EdukoApp(
+                    initialName = prefs.getString("name", "") ?: "",
+                    initialLevel = prefs.getString("level", "4e") ?: "4e",
+                    saveProfile = { name, level ->
+                        prefs.edit().putString("name", name).putString("level", level).apply()
+                    }
+                )
+            }
         }
     }
 }
 
-@Composable private fun Lesson(title:String,pet:String,back:()->Unit,quiz:()->Unit,teacher:()->Unit) {
- Screen {
-  Row(verticalAlignment=Alignment.CenterVertically){IconButton(back){Icon(Icons.Default.ArrowBack,null)};Column{Text("TA LEÇON",color=Purple,fontWeight=FontWeight.Bold,fontSize=12.sp);Text(title,color=Ink,fontSize=25.sp,fontWeight=FontWeight.ExtraBold)}}
-  Panel(Lilac){Text(pet+"  Mission du jour",fontSize=19.sp,fontWeight=FontWeight.Bold,color=Ink);Text("On avance étape par étape. Tu peux prendre ton temps !",color=Ink)}
-  Panel(Color.White) {
-   Text("📖  Le cours",color=Ink,fontSize=20.sp,fontWeight=FontWeight.Bold)
-   Text("Le théorème de Pythagore s'applique dans un triangle rectangle. Le carré de la longueur de l'hypoténuse est égal à la somme des carrés des deux autres côtés.",color=Ink)
-   Text("a² + b² = c²",color=Purple,fontWeight=FontWeight.ExtraBold,fontSize=25.sp)
-   Text("Exemple : si les deux côtés de l'angle droit mesurent 3 cm et 4 cm, l'hypoténuse mesure 5 cm.",color=Ink)
-   Text("À retenir : l'hypoténuse est le côté opposé à l'angle droit. C'est le plus long côté.",color=Ink)
-  }
-  Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Tile("🎧","Écouter le cours",Modifier.weight(1f)){};Tile("🎬","Vidéos",Modifier.weight(1f)){}}
-  Button(quiz,Modifier.fillMaxWidth().height(54.dp),shape=RoundedCornerShape(16.dp)){Text("Je m'entraîne avec un quiz →",fontWeight=FontWeight.Bold)}
-  OutlinedButton(teacher,Modifier.fillMaxWidth()){Text("Poser une question au professeur")}
-  Text("Version de démonstration : le cours Pythagore est un exemple local. L'IA, l'audio et les vidéos seront connectés ensuite.",color=Color.Gray,fontSize=11.sp)
- }
+private data class ChatMessage(val text: String, val fromUser: Boolean, val isNotice: Boolean = false)
+
+@Composable
+private fun EdukoApp(initialName: String, initialLevel: String, saveProfile: (String, String) -> Unit) {
+    var name by remember { mutableStateOf(initialName) }
+    var level by remember { mutableStateOf(initialLevel) }
+    var draft by remember { mutableStateOf("") }
+    var showSettings by remember { mutableStateOf(false) }
+    var photo by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    val messages = remember { mutableStateListOf<ChatMessage>() }
+
+    val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        if (!spoken.isNullOrBlank()) draft = listOf(draft, spoken).filter { it.isNotBlank() }.joinToString(" ")
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) photo = bitmap
+    }
+
+    fun sendMessage() {
+        val text = draft.trim()
+        if (text.isNotEmpty() || photo != null) {
+            messages.add(ChatMessage(text.ifBlank { "J'ai ajouté une photo." }, true))
+            messages.add(ChatMessage(
+                "Je n'ai pas encore accès au moteur d'intelligence artificielle. Cette version met en place l'interface de discussion ; la connexion sécurisée à un service IA et l'analyse des photos restent à développer.",
+                false, true
+            ))
+            draft = ""
+            photo = null
+        }
+    }
+
+    Surface(Modifier.fillMaxSize(), color = Paper) {
+        Column(Modifier.fillMaxSize()) {
+            TopBar(name.ifBlank { "Élève" }, level, { showSettings = true }, { messages.clear() })
+            if (messages.isEmpty()) {
+                WelcomePanel(name)
+                SuggestedPrompts(
+                    onChoose = { draft = it },
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(messages) { message -> MessageBubble(message) }
+                }
+            }
+            if (photo != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.foundation.Image(
+                        bitmap = photo!!.asImageBitmap(), contentDescription = "Photo du devoir",
+                        modifier = Modifier.size(62.dp).background(Color.White, RoundedCornerShape(10.dp))
+                    )
+                    Text("Photo prête à joindre", Modifier.weight(1f).padding(start = 10.dp), color = Muted, fontSize = 13.sp)
+                    Text("Retirer", Modifier.clickable { photo = null }.padding(8.dp), color = Blue, fontSize = 13.sp)
+                }
+            }
+            Composer(
+                value = draft,
+                onValueChange = { draft = it },
+                onSend = { sendMessage() },
+                onCamera = { cameraLauncher.launch(null) },
+                onVoice = {
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR")
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Dis-moi ce que tu veux comprendre")
+                    }
+                    runCatching { voiceLauncher.launch(intent) }
+                }
+            )
+            Text(
+                "Eduko peut se tromper : vérifie les réponses avec ton cours ou ton enseignant.",
+                Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 8.dp),
+                color = Muted, fontSize = 10.sp, textAlign = TextAlign.Center
+            )
+        }
+    }
+
+    if (showSettings) {
+        AlertDialog(
+            onDismissRequest = { showSettings = false },
+            title = { Text("Mon profil", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Prénom", color = Muted, fontSize = 12.sp)
+                    OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, placeholder = { Text("Ton prénom") })
+                    Text("Classe", color = Muted, fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("6e", "5e", "4e", "3e", "2nde", "1re", "Tle").forEach {
+                            FilterChip(selected = level == it, onClick = { level = it }, label = { Text(it) })
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { saveProfile(name, level); showSettings = false }) { Text("Enregistrer") } },
+            dismissButton = { TextButton(onClick = { showSettings = false }) { Text("Fermer") } }
+        )
+    }
 }
 
-@Composable private fun Quiz(index:Int,score:Int,done:Boolean,answer:(Boolean)->Unit,back:()->Unit,retry:()->Unit) {
- val qs=listOf("Dans quel triangle utilise-t-on Pythagore ?" to listOf("Rectangle","Équilatéral","Quelconque"),"Comment s'appelle le plus long côté ?" to listOf("La médiane","L'hypoténuse","La hauteur"),"Quelle formule est correcte ?" to listOf("a + b = c","a² + b² = c²","a² - b² = c"),"Les côtés mesurent 3 et 4. L'hypoténuse vaut…" to listOf("6","7","5"),"L'hypoténuse se trouve…" to listOf("Face à l'angle droit","À côté","N'importe où"))
- val correct=listOf(0,1,1,2,0)
- Screen {
-  Row(verticalAlignment=Alignment.CenterVertically){IconButton(back){Icon(Icons.Default.ArrowBack,null)};Text("Mon petit contrôle",color=Ink,fontSize=23.sp,fontWeight=FontWeight.ExtraBold)}
-  if(!done) {
-   Text("Question "+(index+1)+" sur 5",color=Purple,fontWeight=FontWeight.Bold)
-   LinearProgressIndicator(progress={ (index+1)/5f }, modifier=Modifier.fillMaxWidth())
-   Panel(Lilac){Text(qs[index].first,color=Ink,fontSize=20.sp,fontWeight=FontWeight.Bold)}
-   qs[index].second.forEachIndexed{i,opt->OutlinedButton({answer(i==correct[index])},Modifier.fillMaxWidth().height(54.dp)){Text(opt,color=Ink)}}
-  } else {
-   val stars=score.coerceAtLeast(1)
-   Text("Bravo pour tes efforts !",fontSize=25.sp,fontWeight=FontWeight.ExtraBold,color=Ink)
-   Text("⭐".repeat(stars)+"☆".repeat(5-stars),fontSize=35.sp)
-   Text(score.toString()+" bonnes réponses sur 5",color=Purple,fontSize=20.sp,fontWeight=FontWeight.Bold)
-   Text(when(stars){5->"Leçon maîtrisée !";4->"Très bonne maîtrise !";3->"Tu progresses bien. Encore un peu d'entraînement !";else->"Chaque essai te fait avancer. Reprenons les bases ensemble !"},color=Ink)
-   Button(retry,Modifier.fillMaxWidth()){Text("Recommencer")}
-   OutlinedButton(back,Modifier.fillMaxWidth()){Text("Retour au cours")}
-  }
- }
+@Composable
+private fun TopBar(name: String, level: String, settings: () -> Unit, newChat: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 18.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(42.dp).background(BlueSoft, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.School, contentDescription = null, tint = Blue, modifier = Modifier.size(23.dp))
+        }
+        Column(Modifier.weight(1f).padding(start = 10.dp)) {
+            Text("EDUKO", color = Blue, fontSize = 17.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            Text("$name · $level", color = Muted, fontSize = 11.sp)
+        }
+        IconButton(onClick = newChat) { Icon(Icons.Default.Add, "Nouvelle discussion", tint = Ink) }
+        IconButton(onClick = settings) { Icon(Icons.Default.Settings, "Paramètres", tint = Ink) }
+    }
+    HorizontalDivider(color = Line)
 }
 
-@Composable private fun Teacher(question:String,onQuestion:(String)->Unit,pet:String,back:()->Unit) {
- Screen {
-  Row(verticalAlignment=Alignment.CenterVertically){IconButton(back){Icon(Icons.Default.ArrowBack,null)};Text("Mon professeur",color=Ink,fontSize=23.sp,fontWeight=FontWeight.ExtraBold)}
-  Panel(Lilac){Text(pet+"  Coucou !",fontSize=25.sp);Text("Pose-moi une question sur ta leçon. Le vrai professeur IA sera connecté dans une prochaine version.",color=Ink)}
-  Entry(question,onQuestion,"Écris ta question…")
-  Text("La conversation IA n'est pas encore active dans cette version de démonstration.",color=Color.Gray,fontSize=12.sp)
- }
+@Composable
+private fun WelcomePanel(name: String) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(top = 28.dp, bottom = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(Modifier.size(86.dp).background(BlueSoft, CircleShape), contentAlignment = Alignment.Center) {
+            Text("E", color = Blue, fontSize = 46.sp, fontWeight = FontWeight.ExtraBold)
+        }
+        Spacer(Modifier.height(18.dp))
+        Text(if (name.isBlank()) "Bonjour ! Je suis Eduko." else "Bonjour $name !", color = Ink, fontSize = 25.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text("Ton professeur à la maison. On peut reprendre un cours, comprendre un exercice ou préparer un contrôle, tranquillement et étape par étape.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp, textAlign = TextAlign.Center)
+    }
 }
 
-@Composable private fun Screen(content:@Composable ColumnScope.()->Unit) {
- Surface(Modifier.fillMaxSize(),color=Bg) {
-  LazyColumn(Modifier.fillMaxSize().padding(horizontal=18.dp),contentPadding=PaddingValues(top=23.dp,bottom=30.dp)) {
-   item { Column(verticalArrangement=Arrangement.spacedBy(14.dp),content=content) }
-  }
- }
+@Composable
+private fun SuggestedPrompts(onChoose: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("COMMENT PUIS-JE T'AIDER ?", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        PromptCard("📘", "M'expliquer une leçon", "Avec des mots simples et des exemples", onChoose)
+        PromptCard("✏️", "M'aider sur un exercice", "Un indice à la fois, sans donner directement la réponse", onChoose)
+        PromptCard("📷", "Comprendre une photo de cours", "Ajouter une photo avec le bouton appareil", onChoose)
+        PromptCard("🧠", "Me préparer à un contrôle", "Réviser les notions importantes", onChoose)
+        Spacer(Modifier.weight(1f))
+    }
 }
-@Composable private fun Heading(title:String,sub:String) {
- Column(verticalArrangement=Arrangement.spacedBy(5.dp)){Text("EDUKO ✨",color=Purple,fontWeight=FontWeight.Black,letterSpacing=3.sp);Text(title,color=Ink,fontSize=27.sp,fontWeight=FontWeight.ExtraBold);Text(sub,color=Color.Gray)}
+
+@Composable
+private fun PromptCard(icon: String, title: String, subtitle: String, onChoose: (String) -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onChoose("$title : ") },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(icon, fontSize = 25.sp)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(title, color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(subtitle, color = Muted, fontSize = 11.sp)
+            }
+            Text("›", color = Blue, fontSize = 25.sp)
+        }
+    }
 }
-@Composable private fun Panel(color:Color,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
- Card(modifier.fillMaxWidth(),shape=RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=color)){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp),content=content)}
+
+@Composable
+private fun MessageBubble(message: ChatMessage) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start) {
+        Column(
+            Modifier.widthIn(max = 310.dp)
+                .background(
+                    when {
+                        message.fromUser -> Blue
+                        message.isNotice -> Color(0xFFFFF5E6)
+                        else -> Color.White
+                    },
+                    RoundedCornerShape(18.dp)
+                )
+                .padding(horizontal = 15.dp, vertical = 12.dp)
+        ) {
+            if (!message.fromUser) Text("EDUKO", color = if (message.isNotice) Color(0xFF8B5B1D) else Blue, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(message.text, color = if (message.fromUser) Color.White else Ink, fontSize = 14.sp, lineHeight = 21.sp)
+        }
+    }
 }
-@Composable private fun Panel(brush:Brush,content:@Composable ColumnScope.()->Unit) {
- Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp)){Column(Modifier.background(brush).padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp),content=content)}
-}
-@Composable private fun Entry(value:String,onValue:(String)->Unit,hint:String) {
- Row(Modifier.fillMaxWidth().background(Color.White,RoundedCornerShape(14.dp)).padding(14.dp)) {
-  Box(Modifier.weight(1f)){if(value.isEmpty())Text(hint,color=Color.Gray,fontSize=14.sp);BasicTextField(value,onValue,Modifier.fillMaxWidth(),textStyle=androidx.compose.ui.text.TextStyle(color=Ink,fontSize=15.sp))}
- }
-}
-@Composable private fun Tile(icon:String,label:String,modifier:Modifier=Modifier,onClick:()->Unit) {
- Card(modifier.clickable(onClick=onClick),shape=RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=Color.White)){
-  Column(Modifier.fillMaxWidth().padding(14.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(6.dp)){Text(icon,fontSize=28.sp);Text(label,color=Ink,fontWeight=FontWeight.SemiBold,fontSize=12.sp,textAlign=TextAlign.Center)}
- }
+
+@Composable
+private fun Composer(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onCamera: () -> Unit,
+    onVoice: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().background(Paper, RoundedCornerShape(22.dp)).padding(horizontal = 7.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onCamera) { Icon(Icons.Default.CameraAlt, "Ajouter une photo", tint = Blue) }
+            BasicTextField(
+                value = value, onValueChange = onValueChange,
+                modifier = Modifier.weight(1f).padding(horizontal = 5.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Ink, fontSize = 14.sp),
+                decorationBox = { inner ->
+                    Box {
+                        if (value.isEmpty()) Text("Écris ton message…", color = Muted, fontSize = 14.sp)
+                        inner()
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { onSend() }),
+                maxLines = 4
+            )
+            IconButton(onClick = onVoice) { Icon(Icons.Default.Mic, "Dicter un message", tint = Blue) }
+            IconButton(
+                onClick = onSend,
+                enabled = value.isNotBlank(),
+                modifier = Modifier.size(42.dp).background(if (value.isNotBlank()) Blue else Line, CircleShape)
+            ) { Icon(Icons.Default.ArrowUpward, "Envoyer", tint = Color.White) }
+        }
+    }
 }
