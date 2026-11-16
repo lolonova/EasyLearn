@@ -28,3 +28,5 @@ C'est une première base Android locale. La génération IA, l'OCR intelligent d
 
 ## Compilation
 Le workflow GitHub Actions « Build Eduko APK » construit l'APK debug à chaque push sur main et sur demande manuelle.
+
+Build de test demandé le 16 novembre 2026.
