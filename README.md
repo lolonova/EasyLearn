@@ -1,48 +1,34 @@
-# Révise+ V6 🚀✨ — « Réussir pas à pas »
+# Révisé+ — Professeur IA
 
-Application éducative Android pour le collège (5e, 4e, 3e), en français.
+Refonte complète de l'application éducative Android pour les élèves de 5e, 4e et 3e.
 
-Deux univers : **Gabriel** (thème galaxie 🚀) et **Emma** (thème kawaii 🐱), chacun avec sa progression séparée.
+## Vision
+Une application d'apprentissage personnalisée, accessible et motivante, centrée sur un professeur IA vocal et animé. L'élève formule sa demande à la voix ou à l'écrit, photographie un cours ou un exercice, puis reçoit un parcours de révision adapté.
 
-Onboarding V6 : à la première connexion d'un profil, on choisit le **niveau** (5e/4e/3e) puis les **matières** à réviser (liste cochable, italien inclus). L'accueil donne accès à toutes les fonctions (façon maquette) : Reprendre mes révisions, Mes derniers chapitres, Toutes mes fonctions (Apprendre, Jouer, Progresser, Réussir, Tuteur, Scanner), défi et astuce du jour.
+## Matières
+Mathématiques, Français, Anglais, Italien, Histoire-Géographie, Physique-Chimie et SVT.
 
-## ✨ Contenu
+## Parcours d'une leçon
+- Cours complet écrit et version audio / podcast.
+- Vidéos explicatives pertinentes.
+- Quiz progressifs de difficulté croissante.
+- Contrôle final et maîtrise évaluée sur 5 étoiles.
+- Dialogue avec le professeur IA.
+- Analyse de photos de cours et d'exercices.
 
-- **114 chapitres complets** : 8 matières × 3 niveaux (dont Italien) — Maths, Français, Histoire, Géo, SVT, Physique-Chimie, Anglais.
-- Fiches **express** et **complètes** par chapitre, lecture audio 🔊 (synthèse vocale).
-- Quiz Découverte / Expert adaptatifs : les questions ratées reviennent ; XP, niveaux, badges, défi quotidien (+30 XP), astuce du jour.
-- Tableau de bord par profil : % de progression, derniers chapitres, maîtrise par chapitre.
-- Scanner de cours : photo → OCR → vérification → fiche + mini-quiz (marqué « à vérifier »).
-- Tuteur : **mode démonstration** par défaut (base locale, pas une IA, étiqueté) ; mode IA facultatif via Cloudflare (ci-dessous).
+## Profil et accessibilité
+Profil élève avec prénom, niveau, avatar ou photo. Réglages facultatifs des besoins d'apprentissage (dyslexie, dysorthographie, dyscalculie, dyspraxie, dysphasie, TDAH, TSA, difficultés de concentration ou de mémorisation, autres besoins). Ces réglages servent uniquement à adapter la pédagogie et ne constituent jamais un diagnostic.
 
-## 📱 Récupérer l'APK (depuis un téléphone)
+Les adaptations peuvent inclure textes aérés, police lisible, audio, consignes courtes et explicites, étapes visuelles, rythme ajustable, pauses, répétition espacée et exercices progressifs. Plusieurs adaptations peuvent se combiner.
 
-1. Ouvre https://github.com/lolonova/revise-plus-v3-test → onglet **Actions**.
-2. Le dernier push déclenche automatiquement le build ; attends le **vert ✅** (5-10 min).
-3. Ouvre le build vert → **Artifacts** → **RevisePlus-V6-APK** → télécharge.
-4. Dézippe → installe `app-debug.apk` (autoriser les sources inconnues si demandé).
+## Principes
+- Encouragement et progression sans jugement.
+- Environnement graphique moderne, coloré et immersif, pensé pour les enfants.
+- Professeur 3D expressif et animations légères adaptées aux performances Android.
+- Décors contextuels selon la matière et la leçon.
+- Données de profil privées et modifiables.
+- Pas d'abonnement payant obligatoire.
+- Construction Android et APK via GitHub Actions.
 
-## 🤖 Activer le tuteur IA (facultatif, parent)
-
-1. Compte gratuit sur https://cloudflare.com → Workers & Pages.
-2. Créer un Worker et coller le code de `worker/worker.js`.
-3. Settings → Variables → `AI_KEY` (type Secret) = clé API Mistral (https://console.mistral.ai).
-4. Déployer, copier l'URL du Worker.
-5. Dans l'app : onglet **Plus** → Réglages → coller l'URL.
-
-La clé API n'est **jamais** dans l'application. Le prompt du worker limite le tuteur aux questions scolaires.
-
-## ⚠️ Limites connues
-
-- Contenu limité au collège (5e, 4e, 3e) ; un chapitre par matière et par niveau (21 au total).
-- L'OCR dépend de la qualité des photos ; fiches générées marquées « à vérifier ».
-- Le mode démonstration du tuteur n'est pas une IA (étiqueté comme tel).
-- APK de débogage : usage familial, non destiné au Play Store.
-- Progression stockée localement (aucune donnée envoyée en ligne).
-
-## 🗂️ Structure
-
-- `app/src/main/assets/` : interface complète (HTML/CSS/JS) dans une WebView.
-- `app/src/main/java/fr/reviseplus/app/MainActivity.java` : coquille Android (WebView, TTS, photos).
-- `worker/worker.js` : passerelle IA facultative (Cloudflare Worker).
-- `.github/workflows/build-apk.yml` : compilation automatique (Java 17, Gradle 8.7).
+## État
+Dépôt réinitialisé pour repartir sur une base propre. La structure et les fonctionnalités seront reconstruites progressivement.
