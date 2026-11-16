@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
   val prefs = getSharedPreferences("eduko_profile", MODE_PRIVATE)
   setContent {
    MaterialTheme(colorScheme = lightColorScheme(primary = Purple, background = Bg)) {
-    EdukoApp(prefs.getString("name","") ?: "", prefs.getString("level","4e") ?: "4e") { n,l,needs,pet ->
+    EdukoApp(prefs.getString("name","") ?: "", prefs.getString("level","4e") ?: "4e", prefs.getString("pet","🐉") ?: "🐉", prefs.getString("needs","") ?: "") { n,l,needs,pet ->
      prefs.edit().putString("name",n).putString("level",l).putString("needs",needs.joinToString(",")).putString("pet",pet).apply()
     }
    }
@@ -52,11 +52,11 @@ class MainActivity : ComponentActivity() {
 private enum class Page { PROFILE, HOME, LESSON, QUIZ, TEACHER }
 
 @Composable
-private fun EdukoApp(savedName:String, savedLevel:String, save:(String,String,List<String>,String)->Unit) {
+private fun EdukoApp(savedName:String, savedLevel:String, savedPet:String, savedNeeds:String, save:(String,String,List<String>,String)->Unit) {
  var name by remember { mutableStateOf(savedName) }
  var level by remember { mutableStateOf(savedLevel) }
- var pet by remember { mutableStateOf("🐉") }
- var needs by remember { mutableStateOf(setOf<String>()) }
+ var pet by remember { mutableStateOf(savedPet) }
+ var needs by remember { mutableStateOf(savedNeeds.split(",").filter { it.isNotBlank() }.toSet()) }
  var page by remember { mutableStateOf(if(savedName.isBlank()) Page.PROFILE else Page.HOME) }
  var request by remember { mutableStateOf("") }
  var lesson by remember { mutableStateOf("Pythagore") }
@@ -186,7 +186,7 @@ private fun EdukoApp(savedName:String, savedLevel:String, save:(String,String,Li
   Row(verticalAlignment=Alignment.CenterVertically){IconButton(back){Icon(Icons.Default.ArrowBack,null)};Text("Mon petit contrôle",color=Ink,fontSize=23.sp,fontWeight=FontWeight.ExtraBold)}
   if(!done) {
    Text("Question "+(index+1)+" sur 5",color=Purple,fontWeight=FontWeight.Bold)
-   LinearProgressIndicator(progress={ (index+1)/5f },Modifier.fillMaxWidth())
+   LinearProgressIndicator(progress={ (index+1)/5f }, modifier=Modifier.fillMaxWidth())
    Panel(Lilac){Text(qs[index].first,color=Ink,fontSize=20.sp,fontWeight=FontWeight.Bold)}
    qs[index].second.forEachIndexed{i,opt->OutlinedButton({answer(i==correct[index])},Modifier.fillMaxWidth().height(54.dp)){Text(opt,color=Ink)}}
   } else {
