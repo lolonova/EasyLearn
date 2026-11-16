@@ -28,6 +28,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.sceneview.SceneView
+import io.github.sceneview.rememberCameraManipulator
+import io.github.sceneview.rememberEngine
+import io.github.sceneview.rememberModelInstance
+import io.github.sceneview.rememberModelLoader
 
 private val Purple = Color(0xFF7357E8)
 private val Ink = Color(0xFF20264A)
@@ -132,7 +137,7 @@ private fun EdukoApp(savedName:String, savedLevel:String, savedPet:String, saved
   }
   Panel(Brush.linearGradient(listOf(Color(0xFF7760E8),Color(0xFF9B82F4)))) {
    Row(verticalAlignment=Alignment.CenterVertically) {
-    Box(Modifier.size(88.dp).background(Color.White.copy(alpha=.2f),CircleShape),contentAlignment=Alignment.Center){Text(pet,fontSize=55.sp)}
+    EdukoRobot3D(Modifier.width(150.dp).height(205.dp))
     Column(Modifier.weight(1f)) {
      Text("TON COMPAGNON D'ÉTUDE",color=Color.White.copy(alpha=.8f),fontSize=11.sp)
      Text("On apprend ensemble ?",color=Color.White,fontSize=20.sp,fontWeight=FontWeight.Bold)
@@ -159,6 +164,22 @@ private fun EdukoApp(savedName:String, savedLevel:String, savedPet:String, saved
    }
   }
  }
+}
+
+@Composable
+private fun EdukoRobot3D(modifier: Modifier = Modifier) {
+    val engine = rememberEngine()
+    val modelLoader = rememberModelLoader(engine)
+    SceneView(
+        modifier = modifier,
+        engine = engine,
+        modelLoader = modelLoader,
+        cameraManipulator = rememberCameraManipulator()
+    ) {
+        rememberModelInstance(modelLoader, "models/eduko_robot_v1.glb")?.let { instance ->
+            ModelNode(modelInstance = instance, scaleToUnits = 2.15f, autoAnimate = true)
+        }
+    }
 }
 
 @Composable private fun Lesson(title:String,pet:String,back:()->Unit,quiz:()->Unit,teacher:()->Unit) {
